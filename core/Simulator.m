@@ -288,6 +288,14 @@ classdef Simulator
 			presolverTime=tic();
             storeFlag=0;
             nstore=1;
+            %Storage matrices
+            Qstorage=zeros(obj.indexMaxDynamic,obj.storageRows);
+            Phistorage=zeros(obj.indexMax,obj.storageRows);
+            Vstorage=zeros(obj.indexMaxDynamic,obj.storageRows);
+            Phasestorage=zeros(3,obj.storageRows);
+            stimstorage=zeros(size(obj.indexesE,2),obj.storageRows);
+            markerstorage=zeros(1,obj.storageRows);
+            currentTimestorage=zeros(1,obj.storageRows);
 			[V,Q,phi,previousV,current,currentQ,currentPhi,delay]=obj.presolve(obj.stimulator,seed);
 			obj.stimulator=obj.stimulator.setMeanPhi(mean(phi(obj.indexesE,1)));
             fprintf('Presolver completed \n')
@@ -305,15 +313,24 @@ classdef Simulator
                 currentTime=n*obj.h; %in samples
                 stimFlags(9)=mean(phi(obj.indexesE,current));
 				%Save data
-				if storeFlag==1
-					%saveTime=tic();
-					obj.monitor.saveWithoutStim(V,Q(:,currentQ),phi(:,current));		
-					%toc(saveTime);
+			
+				if samplingFlag==1
+					Vstorage(:,nstore)=V;
+					Qstorage(:,nstore)=Q(:,currentQ(1));
+					Phistorage(:,nstore)=phi(:,current);
+					stimstorage(:,nstore)=stim;
+					markerstorage(nstore)=marker;
+					currentTimestorage(nstore)=currentTime;
+					if storeFlag==1
+						obj.monitor.savebatch(Vstorage,Qstorage,Phistorage,stimstorage,markerstorage,currentTimestorage);
+						obj.monitor.savePhasebatch(Phasestorage);
+						if obj.plasticityFlag==2
+							[obj.strengthsRatios,meanPhi]=obj.plasticity.update(Phistorage);
+							obj.monitor.saveStrengths(obj.model.connectionVector,meanPhi,obj.strengthsRatios)
+						end
+					end
 				end
-				%Plasticity
-				if obj.plasticityFlag==2
-					obj.model=obj.model.updateConnections(1,1,zeros(8,1));
-				end
+
 				
 				%TODO: closed-loop control
 				 %stimFlags=obj.stimulator.phaseLockSO(V);
@@ -326,7 +343,8 @@ classdef Simulator
 			end	%Simulation step
 		end %function 
 		
-		%% Presolver method, 
+	%%%%%%%%%%%%%%%%%%%%
+	%% Presolver method, 
         % Start near the steady state points in all
 		%populations
 		function[steadyV,steadyQ,steadyPhi,steadyPreviousV,current,currentQ,currentPhi,delay]=presolve(obj,stimulator,seed)
@@ -440,8 +458,9 @@ classdef Simulator
             steadyQ=Q;
             steadyPreviousV=previousV;
 		end
-		
-		%% Step
+	
+	%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+	%% Step
         %kernel of the simulations
 		function [V,Q,phi,previousV]=step(obj,V,Q,phi,previousV,current,currentQ,currentPhi,delay)
 			%Dendrytic Voltages, taking in account the thalamocortical-delay
@@ -473,6 +492,8 @@ classdef Simulator
             %toc(t4);
         end
         
+        %%%%%%%%%%%%%%%%%%%%%%%
+        %StepAAS
         %kernel of the simulations
 		function [V,Q,phi,previousV,Vaas,Qaas]=stepAAS(obj,V,Q,phi,previousV,Vaas,Qaas,current,currentQ,currentPhi,delay,time)
 			%Dendrytic Voltages, taking in account the thalamocortical-delay
@@ -496,7 +517,7 @@ classdef Simulator
 
         end
         
-        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         function obj=setSteadyValues(obj,meanV,meanQ,meanphi)
 			%% Set values
             obj.steadyV=meanV;
@@ -505,6 +526,8 @@ classdef Simulator
         end
   
   
+  	%%%%%%%%%%%%%%%%%%%%%%%%%%
+  	%Control of timing indexes
 		function [current,currentQ,currentPhi,delay,nstore,samplingFlag,storageFlag]=indexShifting(obj,n,currentQ,nstore)
 			%%Return the current position to store temporally the data, the delay sample
 			%and a flag to store permanently the data

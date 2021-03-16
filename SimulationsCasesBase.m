@@ -1,5 +1,5 @@
 clear
-
+addpath('./core');
 %Parameters of the model
 %Constants
 Qmax=340;
@@ -10,48 +10,62 @@ range=0.086;
 sigma_rho=0.0038;
 theta=0.01292;
 t0=0.085;
-initialChangeRates=[1,-2,3,4,5,6,-7,8]*1e-3; %not used
-
+%AAS Model
+tau_v=10.0; 
+tau_m=10.0;
+nu_vc=-2.9e-3;
+nu_vh=1e6;
+nu_vm=-2.1e-3;
+nu_mv=-1.8e-3;
+xi=45*3600;
+mu=4.4e-9;
+c0=4.5;
+Cphase=2*pi/3;
+Ach=1.3e-3;
+AASconnections=1;
+%Plasticity %Not used
+ratesA=[-1.01;-1.01;-1.25;-1;-0.4;-1.25;-1.25;-1.25];
+ratesB=[10,1.6,0.8,2.7,0.7,1.1,0.55,0.45]*1e-5;
+tp=0.01;
 
 %Variables
-nu1=[3.06e-3, -3.24e-3, 0.92e-3, 0.26e-3, 2.88e-3, 4.73e-3, -1.95e-3, 2.70e-3];
-nu2=[6.81e-3, -6.89e-3, 1.85e-3, 0.3e-3, 0.21e-3, 1.61e-3, -1.62e-3, 12.6e-3];
+nu1=[3.06e-3, -3.24e-3, 0.92e-3, 0.26e-3, 2.88e-3, 4.73e-3, -1.95e-3, 2.70e-3];%Spindles
+nu2=[6.81e-3, -6.89e-3, 1.85e-3, 0.3e-3, 0.21e-3, 1.61e-3, -1.62e-3, 12.6e-3];%N3
 difference_nus=nu2-nu1;
-phins=[0,1,2];
-stds=[-1,pi/2,pi];
-seeds=1:20;
+seeds=1;
 
 %Variables behavior
 samples_nu=5;
-samples_phi=2;
-samples_std=1;
+phin=[0,0,0,1,2];
+stdn=1/sqrt(2)*1e-4;
 seed_n=length(seeds);
 nus=zeros(samples_nu,8);
-for i=1:samples_nu
-	nus(i,:)=nu1;
-	nus(i,:)=nu1+1/samples_nu*(i-1)*difference_nus;
-end
+nus(1,:)=nu1;
+nus(2,:)=nu2;
+nus(3,:)=nu1+2/3*difference_nus;
+nus(4,:)=nu1+2/3*difference_nus;
+nus(5,:)=nu1+2/3*difference_nus;
 %Parameters of the simulation
 Nx=16;
 Ny=16;
 Lx=0.5;
 Ly=0.5;
 h=1e-4;
-finalTime=70;
-previousTime=6;
+finalTime=20;
+previousTime=10;
 samplingFrequency=100;
 
 %delete any previous pool
 poolobj = gcp('nocreate');
-delete(poolobj);
-parpool(36);
+%delete(poolobj);
+%parpool(8);
 
 stimFrequency=1;
 stimAmplitude=0;
 stimPulseDuration=0;
 endTime=1;
 startTime=0;
-noiseColor=2; %White noise: 1 more fast simulation
+noiseColor=1; %White noise: 1 more fast simulation
 stimShape=0;
 targetPhase=0;
 stimAmplitudeSD=0;
@@ -65,37 +79,41 @@ plasticity_onoff=0; %Activate with 2
 stimMode=0;
 stimFlags=zeros(1,10);
 noiseFlags=zeros(1,3);
-plasticityFrecuency=1/60; %not used
-rateHoldLearn=2;% not used
 
-numSims=samples_nu*samples_phi*samples_std*seed_n;
-simulationSpace=[samples_nu,samples_phi,samples_std,seed_n];
 
-parfor iSim=1:numSims
-	[idxVar1,idxVar2,idxVar3,idxVar4]=ind2sub(simulationSpace,iSim);
+numSims=samples_nu;
+simulationSpace=[samples_nu];
+
+for iSim=1:numSims
+	[idxVar1]=ind2sub(simulationSpace,iSim);
 	%Solver with presolve
 	initialStrengths=nus(idxVar1,:);
-	noiseMean=phins(idxVar2);
-	noiseSD=stds(idxVar3+1);
-	config=core.Config();
+	noiseMean=phin(idxVar1);
+	noiseSD=stdn;
+	%Configuration object
+	config=Config();
 	config=config.setTimeParams(h,finalTime,previousTime,samplingFrequency);
-	config=config.setModelParams(Nx,Ny,Lx,Ly,alpha,beta,Qmax,sigma_rho,theta,gamma,range,t0,initialStrengths,initialChangeRates,plasticity_onoff);
+	config=config.setModelParams(Nx,Ny,Lx,Ly,alpha,beta,Qmax,sigma_rho,theta,gamma,range,t0,initialStrengths,plasticity_onoff);
+	config=config.setModelAASParams(nu_vm,nu_mv,nu_vc,nu_vh,xi,mu,c0,tau_m,tau_v,Cphase,Ach,AASconnections);
 	config=config.setStimParams(stimFrequency,stimAmplitude,stimPulseDuration,startTime,endTime,noiseSD,noiseMean,noiseColor,stimShape,targetPhase,stimAmplitudeSD,stimFrequencySD,sigmaE,sigmaI,stimX,stimY,shapeNoiseColor);
-	config=config.setPlasticityParams(plasticityFrecuency,rateHoldLearn);
-	stimulator=core.Stimulator(stimMode,config);
-	model=core.Model(config);
-	integrator=core.Integrator(config,model);
-	plasticity=core.Plasticity(config);
-	filename=sprintf('NU%d-PHIN%d-STD%d-seed%d-pink',idxVar1,idxVar2,idxVar3+1,idxVar4);
-	monitor=core.Monitor(config,['timeseries/baselines/',filename],{"Phi:E:all","Phi:N:all","Phi:R:135","Phi:S:135"});
-	simulator=core.Simulator(config,model,integrator,stimulator,monitor,plasticity);
+	config=config.setPlasticityParams(ratesA,ratesB,tp);
+
+	%Modules
+	stimulator=Stimulator(stimMode,config);
+	model=Model(config);
+	modelAAS=ModelAAS(config);
+	integrator=Integrator(config,model,modelAAS);
+	plasticity=Plasticity(config);
+	filename=sprintf('Sleep-caso-%d',idxVar1);
+	monitor=Monitor(config,['timeseries/baselines/',filename],{"Phi:E:all","Phi:N:all"});
+	simulator=Simulator(config,model,modelAAS,integrator,stimulator,monitor,plasticity);
 	fprintf('Start simulation of %s \n',filename);
-	simulator=simulator.solveWithPresolve(seeds(idxVar4))
+	simulator=simulator.solveWithPresolve(seeds);
 	fprintf('End simulation of %s \n',filename);
 end %End main for
 
 %delete any previous pool
-poolobj = gcp('nocreate');
-delete(poolobj);
+%poolobj = gcp('nocreate');
+%delete(poolobj);
 
 fprintf('####THE END####\n');

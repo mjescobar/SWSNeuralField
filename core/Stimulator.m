@@ -240,7 +240,7 @@ classdef Stimulator
 				else
 					shape_now=obj.stimAmplitude;
 				end
-			elseif obj.stimShape==13 %Half trapece
+			elseif obj.stimShape==13 %Rectangular trapezoid
 				if (n-now_flags(1))>obj.stimPulseDurationSamples/2
 					shape_now=obj.stimAmplitude-2*obj.stimAmplitude/(obj.stimPulseDurationSamples)*(n-now_flags(1)-obj.stimPulseDurationSamples/2);
 				else

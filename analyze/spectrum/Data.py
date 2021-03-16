@@ -4,7 +4,6 @@ import scipy.stats as stats
 import scipy.signal as signal
 import scipy.ndimage as ndimage
 import matplotlib.pyplot as plt
-import pycwt
 import Wavelets
 import sys
 

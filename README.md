@@ -1,4 +1,3 @@
-
 # SWSNeuralField
 Matlab implementation of the **Neural Field Theory** model.
 
@@ -37,15 +36,15 @@ To avoid the data collected for *'Selection of stimulus parameters for enhancing
 
 ### Requirements
 
-Simulations tested on Matlab R2017b on Ubuntu 18.04.
+Simulations tested on Matlab R2017b on Ubuntu 18.04 (Server and Desktop) and R2020b on Ubuntu 20.04.
 
-Analysis code tested on Python 3.6.9. Package requirements in 'analyze/requirements.txt' 
+Analysis code tested on Python >3.6.9. Package requirements in 'analyze/requirements.txt' 
 
 The requirements could be installed from inside that folder with (preferably also inside a python virtual environment):
 
 ```pip install -r requirements.txt```
 
-or (if python2 is also installed): 
+or (if python2 is also installed in the system): 
 
 ``` pip3 install -r requirements.txt ```
 
@@ -63,6 +62,7 @@ The file *testSimulation.m* shows a demo configuration of simulation configurati
 In brief, there is the need to set the model parameters. 
 
 Then, instatiate the configuration object and pass to it the parameters:
+
 ``` config=Config(); ```
 
 - Time parameters
@@ -75,10 +75,9 @@ Then, instatiate the configuration object and pass to it the parameters:
 
 - Stimulation parameters
 
-``` config=config.setStimParams(stimFrequency,stimAmplitude,stimPulseDuration,startTime,endTime,noiseSD,noiseMean,noiseColor,stimShape,targetPhase,stimAmplitudeSD,stimFrequencySD,sigmaE,sigmaI,stimX,stimY,shapeNoiseColor);
-```
+``` config=config.setStimParams(stimFrequency,stimAmplitude,stimPulseDuration,startTime,endTime,noiseSD,noiseMean,noiseColor,stimShape,targetPhase,stimAmplitudeSD,stimFrequencySD,sigmaE,sigmaI,stimX,stimY,shapeNoiseColor); ```
 
-- Plasticity parameters (_in development, but required_)
+- Plasticity parameters (_in development, but already required now_)
 
 ``` config=config.setPlasticityParams(ratesA,ratesB,tp); ```
 
@@ -98,7 +97,7 @@ _stimMode_ could be 0: Open loop , 1: Closed loop.
 
 ``` integrator=Integrator(config,model); ```
 
-- Plasticity
+- Plasticity (_in development, but already required now_)
 
 ``` plasticity = Plasticity(config); ```
 
@@ -106,20 +105,17 @@ _stimMode_ could be 0: Open loop , 1: Closed loop.
 
 ``` monitor=Monitor(config,['timeseries/',filename],{"Phi:E:all","Phi:N:all"}); ```
 
-(If _stimMode_==1, you can also include
-``` monitor=monitor.createFilePhase(['timeseries',filename]);```)
+(If _stimMode_==1, you can also include ``` monitor=monitor.createFilePhase(['timeseries',filename]);```)
 
 
 The outputs syntaxis is: 
-``` "_Measurement_:_Population_:_indexes_" ``` 
-
-inside a cell block of Matlab "_{}_".
+``` "_Measurement_:_Population_:_indexes_" ```  inside a cell's block of Matlab "_{}_".
 
 Where **_Measurement_** could be **Phi**: propagation field, **V**: soma voltage, **Q**: firing response.
 
 **_Population_** is one of the populations, **E**: excitatory cortex, **I**: inhibitory cortex, **R**: reticular nucleus, **S**: relay nuclei, **N**: input.
 
-**_indexes_** could be **'all'** to include all the nodes (Ny x Nx) or a list inside brackets [].
+**_indexes_** could be **'all'** to include all the nodes (Ny x Nx) or a list of node indexes inside brackets [].
 
 Finally **_filename_** is the name of output files before the suffix. There is an aditional method to crate filenames from stimulation parameters:
 
@@ -135,7 +131,23 @@ There could be two or three output files (if _stimMode_==1). The files' format i
 
 -_filename_-Phase.txt: online filtered signal, online envelope, detected phase (column division: comma).
 
+- Simulator
 
+``` simulator=Simulator(config,model,integrator,stimulator,monitor,plasticity); ```
+
+The simulation could be performed by three functions: *presolve*, *solve*, and *solveWithPresolve*.
+
+*presolve* performs the simulation for the indicated _previousStorageTime_ to obtain initial conditions different than zero. Note that the _stimulator_ is requeired to get the mean and standard deviation of the background noise and return encapuslated the mean value of x(r,t).
+
+``` [steadyV,steadyQ,steadyPhi,steadyPreviousV,current,currentQ,currentPhi,delay]=simulator.presolve(stimulator,preseed); ```
+
+*solve* performs the simulation storing the results at the indicated _samplingFrequency_.
+
+``` simulator.solve(seed,steadyV,steadyQ,steadyPhi,steadyPreviousV,currentQ) ```
+	
+*solveWithPresolve* performs the entire simulation. Not recommended for multiple simulations by the overcharge of the presolver, with not stored-data.
+
+``` simulator.solveWithPresolve(seed) ```
 
 ### Analysis
 

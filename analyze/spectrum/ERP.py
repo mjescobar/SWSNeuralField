@@ -5,7 +5,8 @@ Created on Tue Sep 17 20:37:59 2019
 
 @author: felipe
 """
-
+import sys, os
+sys.path.append(os.path.abspath('../spectrum'))
 import numpy as np
 import scipy.signal as signal
 import scipy.stats as stats
@@ -14,9 +15,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 import pandas as pd
 import Data
-import sys
 import Epochs
-import pycwt
 import Wavelets
 from matplotlib import rc
 rc('text', usetex=True)
