@@ -26,7 +26,7 @@ classdef Plasticity
 			obj.nfft=config.samplingFrequency;
 			obj.gamma=config.gamma;
 			obj.range=config.range;
-			fprintf('Plasticity: Instatiation completed')
+			fprintf('Plasticity: Instatiation completed\n')
 		end
 
 		function obj=init(obj)

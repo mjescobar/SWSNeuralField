@@ -7,6 +7,7 @@ Created on Tue Feb  9 04:05:11 2021
 """
 import sys, os
 sys.path.append(os.path.abspath(os.path.join('..', 'plotting')))
+sys.path.append(os.path.abspath(os.path.join('..', 'collectData')))
 from cycler import cycler
 import numpy as np
 import scipy.stats as stats
@@ -14,7 +15,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import matplotlib.cm as cm
-import CollectData.statistic_plots as sp
+import statistic_plots as sp
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib import rc
 rc('text', usetex=True)

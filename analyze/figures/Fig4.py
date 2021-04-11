@@ -126,7 +126,7 @@ axD2=fig1.add_subplot(gs1[2,2])
 
 axB2=sp.bivariable_std(collect_Iso_energy,collect_so_energy,axB2,stdx_zero=stdSOb,meany_zero=np.mean(n_SO_white),stdy_zero=np.std(n_SO_white),marker='s',cmap=plt.cm.Blues ,flagstdx=True,flagstdy=True,relative_diference=False,labels=labels_energy,meanzero_type='line_inf')
 axB2.set_ylabel('$N_{SO}$/min.',fontsize=8,labelpad=0)
-axB2.set_xlabel('$I^{(SO)}$ (a. u.)',fontsize=8)
+axB2.set_xlabel('$I^{(SO)}$ (a. u.)',fontsize=8,labelpad=0)
 axB2.set_ylim([10,25])
 axB2.set_xlim([-0.05,0.6])
 axB2.tick_params(axis='both', which='major', labelsize=8)
@@ -152,7 +152,7 @@ axC2.text(-0.33,0.93,'E',fontsize=12,fontweight=1000,verticalalignment='bottom',
 
 axD2=sp.bivariable_std(collect_pso_energy,collect_pcp_energy,axD2,meanx_zero=np.mean(P_SO_white),stdx_zero=np.std(P_SO_white),meany_zero=np.mean(P_PCP_white),stdy_zero=np.std(P_PCP_white),marker='s',cmap=plt.cm.Blues ,flagstdx=True,flagstdy=True,relative_diference=False,labels=labels_energy,meanzero_type='line_inf')
 axD2.set_ylabel('$P(C|SP)$',fontsize=8,labelpad=0)
-axD2.set_xlabel('P(SO)',fontsize=8,labelpad=0)
+axD2.set_xlabel('P(SO)',fontsize=8,labelpad=0.5)
 axD2.set_ylim([0.1,0.6])
 axD2.set_xlim([0.1,0.4])
 axD2.plot([0,1],[0,1],color='gray')

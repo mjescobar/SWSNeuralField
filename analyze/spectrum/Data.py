@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Thu July 02 00:20:34 2021
+
+@author: felipe
+"""
+
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
@@ -59,16 +67,17 @@ def loadStoredData(filename,L=np.arange(0,256),fs=100):
 	
 	return data, datazScore,std
 	
-def loadStoredStim(filename,L=256):
+def loadStoredStim(filename,L=256,searchMarkers=False):
 	textfile = open(filename,'r')
 	data=pd.read_csv(textfile, sep='\t')
 	data=data.to_numpy()
 	marker=np.array(data[:,L])#,dtype='int8')
-	if len(np.nonzero(marker)[0])<2 or len(np.nonzero(marker)[0])>200:
+	if searchMarkers:
 		hold=0
 		for n in range(np.shape(data)[0]):
 			if data[n,L-1] != 0 and hold==0:
 				marker[n]=1
+                
 				hold=1
 			elif data[n,L-1] == 0 and hold==1:
 				marker[n]=0
@@ -80,6 +89,19 @@ def loadStoredStim(filename,L=256):
 	textfile.close()
 
 	return data, marker, time
+
+def loadStoredPhase(filename,fs=100,sep=','):
+	
+    textfile = open(filename,'r')
+    data=pd.read_csv(textfile, sep=sep,header=None,error_bad_lines=False)
+    data=data.to_numpy()
+    data=np.array(data,dtype='float')
+    onlineFiltered=data[:,0] 
+    onlineEnvelope=data[:,1] 
+    onlinePhase=data[:,2]
+        
+    	
+    return onlineFiltered, onlineEnvelope, onlinePhase
 
 def spatialFilter(data,sigma=0.141421,Nx=16,Ny=16):
 	lengthTime=np.shape(data)[0]

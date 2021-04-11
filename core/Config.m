@@ -374,10 +374,20 @@ classdef Config
                 if obj.stimTimeMarkers(end)>obj.endTime/obj.h
 					obj.stimTimeMarkers(end)=(obj.endTime-0.1)/obj.h;
                 end
+            elseif stimFrequencySD>1000
+                %Phase-locked stimulation with central frequency
+                %then stimFrequencySD: number of pulses
+                obj.stimTimeMarkers=stimFrequencySD-1000;
+                fprintf('Config: Set quantity of stimulus to %f\n',stimFrequencySD-1000);
             elseif obj.stimFrequency==-1
-            %Phase-locked stimulation
+            %Phase-locked stimulation without central frequency
             %then stimFrequencySD: number of pulses
-            obj.stimTimeMarkers=1:obj.stimFrequencySD;
+                if stimFrequencySD>0
+                    obj.stimTimeMarkers=stimFrequencySD;
+                else
+                    fprintf('Config: Set quantity of stimulus to 100');
+                    obj.stimTimeMarkers=100;
+                end
             else
 				%Derterministic stimulation
                 obj.stimFrequencySD=0;

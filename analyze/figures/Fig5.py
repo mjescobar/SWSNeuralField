@@ -158,4 +158,4 @@ axleg.set_axis_off()
 legF=axleg.legend(hF,lF,fontsize=8,ncol=3,loc='upper left',bbox_to_anchor=(0,-0.2,0.1,0.1),columnspacing=6)
 
 #Save figure
-fig.savefig('./output/Fig5.eps',dpi=300,bbox_inches='tight',bbox_extra_artist=[legF])
+fig.savefig('./output/Fig5.png',dpi=300,bbox_inches='tight',bbox_extra_artist=[legF])

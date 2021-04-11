@@ -6,18 +6,9 @@ Created on Mon Sep 23 13:40:32 2019
 @author: felipe
 """
 
-import pandas as pd
 import numpy as np
-import scipy.stats as stats
 import scipy.signal as signal
-import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-import pycwt
-import sys
-import Data
-from matplotlib import rc
-rc('text', usetex=True)
+
 
 def SODetection(data,neg_threshold=-40e-6,p2p_threshold=80e-6, SOp2p_threshold=0,fs=100):
     shapeData=np.shape(data)
@@ -31,6 +22,10 @@ def SODetection(data,neg_threshold=-40e-6,p2p_threshold=80e-6, SOp2p_threshold=0
     filteredSignal=signal.filtfilt(b,a,data)
     zeros_down=[]
     SOs=[]
+    zeros_prev=np.zeros((lenTime//100,),dtype=int)
+    zeros_post=np.zeros((lenTime//100,),dtype=int)
+    zero_post=0
+    good_so=[]
     for n in range(lenTime):
         #Detect the zero-crosses from up to down in the filtered signal
         if n>0 and filteredSignal[n-1]>0 and filteredSignal[n]<0:
@@ -52,6 +47,11 @@ def SODetection(data,neg_threshold=-40e-6,p2p_threshold=80e-6, SOp2p_threshold=0
                 #after the second zero-cross
                 #select the previous zero-cross
                 zero_prev=zeros_down[np.argwhere(zeros_down<n)[-1][0]]
+                #Avoid overlaps
+                if zero_prev<zero_post:
+                    nzero+=1
+                    n=zeros_down[nzero]
+                    zero_prev=zeros_down[np.argwhere(zeros_down<n)[-1][0]]
             else:
                 #Start at zero index time (this not guarantee a zero cross) 
                 zero_prev=0
@@ -67,12 +67,15 @@ def SODetection(data,neg_threshold=-40e-6,p2p_threshold=80e-6, SOp2p_threshold=0
             period=(zero_post-zero_prev)/fs #Calculate the period
             peak2peak=np.max(filteredSignal[zero_prev:zero_post])-np.min(filteredSignal[zero_prev:zero_post])
             # peak2peak=np.max(data[zero_prev:zero_post])-np.min(data[zero_prev:zero_post])
-            if period>1/highFreq and period<1/lowFreq and peak2peak>p2p_threshold:
+            if period>1.0/highFreq and period<1.0/lowFreq and peak2peak>p2p_threshold:
                 count+=1
+                zeros_prev[count]=zero_prev
+                zeros_post[count]=zero_post
                 SOsegmentation[zero_prev:zero_post]=count
                 SOp2p.append(peak2peak)
             nzero+=1
-            n=zeros_down[nzero]
+            if nzero<len_zeros:
+                n=zeros_down[nzero]
         else:
             if n+1<lenTime:
                 if SOsegmentation[n+1]>0:
@@ -86,20 +89,18 @@ def SODetection(data,neg_threshold=-40e-6,p2p_threshold=80e-6, SOp2p_threshold=0
         SOp2p=np.array(SOp2p)
         meanSOp2p=np.mean(SOp2p)
         if SOp2p_threshold==0:
+            #Set the threshold if it was not set
             SOp2p_threshold=1.25*meanSOp2p
-            # print('len SO candidates: ',np.shape(SOp2p))
-            # print('min SOp2p: ',np.min(SOp2p))
-            # print('mean SOp2p: ',meanSOp2p)
-            # print('max SOp2p: ',np.max(SOp2p))
         for n in range(1,len(SOp2p)+1):
             if SOp2p[n-1]<SOp2p_threshold:
-                SOsegmentation[np.argwhere(SOsegmentation==n)[:,0]]=0
+                SOsegmentation[zeros_prev[n]:zeros_post[n]]=0
             else:
-                if len(np.argwhere(SOsegmentation==n)[:,0])>0:
-                    nn+=1
-                    SOsegmentation[np.argwhere(SOsegmentation==n)[:,0]]=nn
-                    SOdetection[np.argwhere(SOsegmentation==nn)[:,0]]=1
-                    SOs.append(np.argwhere(data[np.argwhere(SOsegmentation==nn)[:,0]]==np.min(data[np.argwhere(SOsegmentation==nn)[:,0]]))[0][0]+np.argwhere(SOsegmentation==nn)[0,0])
+                good_so.append(n)
+        for n in good_so:
+            nn+=1    
+            SOsegmentation[zeros_prev[n]:zeros_post[n]]=nn
+            SOdetection[zeros_prev[n]:zeros_post[n]]=1
+            SOs.append(np.argwhere(data[np.argwhere(SOsegmentation==nn)[:,0]]==np.min(data[np.argwhere(SOsegmentation==nn)[:,0]]))[0][0]+np.argwhere(SOsegmentation==nn)[0,0])
                     
     count=len(SOs)
     return SOdetection, SOsegmentation, SOs,count,meanSOp2p
@@ -113,5 +114,6 @@ def SOERP(data,SOs,prevTime=100,postTime=100):
     SOerp=data_m
     return SOerp        
 
+# #Test 
 # x=0.002*np.cos(1.9*np.pi*np.linspace(0,4,401))
 # SOdetected=SODetection(x)

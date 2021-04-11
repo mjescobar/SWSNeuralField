@@ -85,13 +85,14 @@ def getEpochs(data,markers,fs,shamData=0,startTime=-1,endTime=2,baseline=[-1,-0.
 def ERP(Epoch,fs=100,NxNy=256,lowFreq=0.1,highFreq=16):
     #ERP from all channels
     b,a=signal.cheby1(4,0.01,[lowFreq/(fs/2), highFreq/(fs/2)],'bandpass')
-    erp=np.mean(Epoch.data,axis=1)
-    erp=signal.filtfilt(b,a,erp)
+    
     #ERP in each channel
     splitPoints=np.arange(NxNy,np.shape(Epoch.data)[1],NxNy)  
     meansplitEpochs=np.mean(np.split(Epoch.data,splitPoints,axis=1),axis=0)
     erpChannels=signal.filtfilt(b,a,meansplitEpochs,axis=0)
-     
+    #Mean
+    erp=np.mean(meansplitEpochs,axis=1)
+    erp=signal.filtfilt(b,a,erp)
     return erp,erpChannels
 
 def ERPSingle(Epoch,fs=100,lenTime=801,lowFreq=0.1,highFreq=16):
@@ -99,6 +100,7 @@ def ERPSingle(Epoch,fs=100,lenTime=801,lowFreq=0.1,highFreq=16):
     splitPoints=np.arange(lenTime,np.shape(Epoch.data)[0],lenTime)  
     b,a=signal.cheby1(4,0.01,[lowFreq/(fs/2), highFreq/(fs/2)],'bandpass')
     erp=np.mean(np.split(Epoch.data,splitPoints),axis=0)
+    stderp=np.std(np.split(Epoch.data,splitPoints),axis=0)
     erp=signal.filtfilt(b,a,erp)
     return erp
 

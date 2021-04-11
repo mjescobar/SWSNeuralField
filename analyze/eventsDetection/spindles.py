@@ -5,16 +5,15 @@ Created on Tue Sep 17 00:11:08 2019
 @author: felipe
 """
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import scipy.signal as signal
-import scipy.stats as stats
 import Data
 import sys
 from matplotlib import rc
 rc('text', usetex=True)
 
 def smooth(x,window_len=11,window='hanning'):
+    """https://scipy.github.io/old-wiki/pages/Cookbook/SignalSmooth.html"""
     """smooth the data using a window with requested size.
     
     This method is based on the convolution of a scaled window with the signal.
@@ -298,7 +297,6 @@ def meanRMS(meanData,fs=100,lowFrequency=9,highFrequency=16):
     filtered=signal.filtfilt(b,a,meanData)
     rms=np.zeros((len(filtered),1))
     smoothed_rms=np.zeros((len(filtered),1))
-    spindle_detection=np.zeros((len(filtered),1))
     timeWindow=int(np.ceil(0.2*fs));
     #Spindle Characterisitics
     flag_filt=0
@@ -323,6 +321,7 @@ def plotDetection(meanData,detection,fs=100,label='Spindles',filename='spindles'
     plt.savefig(filename+'-detection.pdf',dpi=300)
 
 def eventsxMinute(segmentedSignal,fs=100):
+    #Select points with precense of events
     events_samples=np.argwhere(segmentedSignal!=0)
     minutes=1
     previous_events=0
@@ -330,6 +329,7 @@ def eventsxMinute(segmentedSignal,fs=100):
     number_events=np.zeros((int(len(segmentedSignal)//(60*fs)),))
     percentage_events=np.zeros((int(len(segmentedSignal)//(60*fs)),))
     for n in range(len(segmentedSignal)):
+        #Unify the samples of an event
         if n in events_samples:
             current_events=segmentedSignal[n]
         if n>60*minutes*fs:

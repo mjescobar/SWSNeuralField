@@ -128,6 +128,20 @@ print(countSpindles)
 # f,Pn=Data.welchSingle(Phinz)
 # f,Pbaseline=Data.welchSingle(Baselineez)
 
+fileEvents=np.load('../collectedData/EventsCharacteristicsBaseline.npz')
+fileEventsPR=np.load('../collectedData/EventsCharacteristicsPR.npz')
+durationsSOB=fileEvents['durationsSO']
+durationsSOP=fileEventsPR['durationsSOP']
+durationsSOR=fileEventsPR['durationsSOR']
+durationsSPB=fileEvents['durationsSP']
+durationsSPP=fileEventsPR['durationsSPP']
+durationsSPR=fileEventsPR['durationsSOR']
+p2pSOB=fileEvents['p2pSO']
+p2pSOP=fileEventsPR['p2pSOP']
+p2pSOR=fileEventsPR['p2pSOR']
+p2pSPB=fileEvents['p2pSP']
+p2pSPP=fileEventsPR['p2pSPP']
+p2pSPR=fileEventsPR['p2pSPR']
 
 
 print('Scalograms')
@@ -143,10 +157,10 @@ freqsPhase,scalesPhase,ScalogramPhase=Data.waveletSingle(Phiephz,correctF=False)
 prop_cycle = plt.rcParams['axes.prop_cycle']
 colorsProp = prop_cycle.by_key()['color']
 #Figure layout
-fig1=plt.figure(figsize=(7.4,7.5))
-gs1 = gridspec.GridSpec(10, 3, figure=fig1, 
-                        height_ratios=[0.2,0.2,0.2,0.2,0.1,0.2,0.04,0.25,0.04,0.2],
-                        width_ratios=[1.1,1,0.05],wspace=0.4,hspace=0.3)
+fig1=plt.figure(figsize=(8.82,8.65))
+gs1 = gridspec.GridSpec(12, 3, figure=fig1, 
+                        height_ratios=[0.2,0.2,0.2,0.2,0.1,0.2,0.04,0.25,0.04,0.2,0.04,0.2],
+                        width_ratios=[1.2,1,0.05],wspace=0.4,hspace=0.3)
 #Time series
 axA1= fig1.add_subplot(gs1[0,0])
 axA2= fig1.add_subplot(gs1[1,0])
@@ -163,11 +177,13 @@ axC2= fig1.add_subplot(gs1[7,0])
 axC3= fig1.add_subplot(gs1[9,0])
 #Shapes
 #Spectrum 
+# axD= fig1.add_subplot(gs1[5,1:3])
 axE= fig1.add_subplot(gs1[5:10,1:3])
 
 axB5=fig1.add_subplot(gs1[0:4,2])
 
-
+# axD1= fig1.add_subplot(gs1[4,1:3])
+# axD1.set_axis_off()
 
 axC4=fig1.add_subplot(gs1[5:10,2])
 axC4.set_axis_off()
@@ -175,7 +191,13 @@ axC5=fig1.add_subplot(gs1[6,0])
 axC5.set_axis_off()
 axC6=fig1.add_subplot(gs1[8,0])
 axC6.set_axis_off()
-# axvoid=
+
+#Events
+axF1=fig1.add_subplot(gs1[10,:])
+axF1.set_axis_off()
+
+axF=fig1.add_subplot(gs1[11,0])
+axG=fig1.add_subplot(gs1[11,1:3])
 
 
 #Shape
@@ -207,9 +229,10 @@ SOMaskedR=np.ma.masked_where(detectionSOR==0, detectionSOR==1)*(0.032)
 #Plot A
 timeA=np.arange(initT/fs,lenT/fs,1/fs)
 timeC=np.arange(23,28,1/fs)
+timeD=np.arange(14,17,1/fs)
 axA1.plot(timeA,Ee[initT:lenT],color='black',label='SHAM')
-axA1.plot(timeA,spindlesMasked[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[4])
-axA1.plot(timeA,SOMasked[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[5])
+axA1.plot(timeA,spindlesMasked[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[2])
+axA1.plot(timeA,SOMasked[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[1])
 axA1.text(-0.2,0.95,'A',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axA1.transAxes)
 
 axA4.hlines(y=-0.03, xmin=23, xmax=28, color='gray', linewidth=0.5)
@@ -218,18 +241,18 @@ axA4.vlines(x=23,ymin=-0.03,ymax=0.03,color='gray', linewidth=0.5)
 axA4.vlines(x=28,ymin=-0.03,ymax=0.03,color='gray', linewidth=0.5)
 axA4.plot(timeA,Phieph1[initT:lenT],color=colorsa[2],label='STIM-CL')
 axA4.vlines(x=np.argwhere(markerph[initT:lenT]==1)/fs+initT/fs,ymin=0,ymax=offset+0.05,linewidth=1,color='gray')
-axA4.plot(timeA,spindlesMaskedP[initT:lenT],'.-',ms=3,markevery=50,label=r'Spindles',color=colorsProp[4])
-axA4.plot(timeA,SOMaskedP[initT:lenT],'.-',label='SO',ms=3,markevery=50,color=colorsProp[5])
+axA4.plot(timeA,spindlesMaskedP[initT:lenT],'.-',ms=3,markevery=50,label=r'Spindles',color=colorsProp[2])
+axA4.plot(timeA,SOMaskedP[initT:lenT],'.-',label='SO',ms=3,markevery=50,color=colorsProp[1])
 
 axA3.vlines(x=np.argwhere(marker[initT:lenT]==1)/fs+initT/fs,ymin=0,ymax=offset+0.05,linewidth=1,color='gray')
 axA3.plot(timeA,Phie1[initT:lenT],color=colorsa[0],label='STIM-P')
-axA3.plot(timeA,spindlesMaskedC[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[4])
-axA3.plot(timeA,SOMaskedC[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[5])
+axA3.plot(timeA,spindlesMaskedC[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[2])
+axA3.plot(timeA,SOMaskedC[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[1])
 
 axA2.vlines(x=np.argwhere(markers[initT:lenT]==1)/fs+initT/fs,ymin=0,ymax=offset+0.05,linewidth=1,color='gray')
 axA2.plot(timeA,Phiep1[initT:lenT],color=colorsa[1],label='STIM-R')
-axA2.plot(timeA,spindlesMaskedR[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[4])
-axA2.plot(timeA,SOMaskedR[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[5])
+axA2.plot(timeA,spindlesMaskedR[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[2])
+axA2.plot(timeA,SOMaskedR[initT:lenT],'.-',ms=3,markevery=50,color=colorsProp[1])
 
 
 
@@ -272,25 +295,25 @@ axA4.tick_params(axis='x', which='both', labelsize=8)
 
 #Plot C
 axC1.plot(timeC,Phiephz[2300:2800],'b',label='$x(t)$')
-axC1.plot(timeC,spindlesMaskedP[2300:2800]-3,'.-',ms=3,markevery=50,color=colorsProp[4],label=r'SP')
-axC1.plot(timeC,SOMaskedP[2300:2800]+4,'.-',ms=3,markevery=50,color=colorsProp[5],label=r'SO')
+axC1.plot(timeC,spindlesMaskedP[2300:2800]-3,'.-',ms=3,markevery=50,color=colorsProp[2],label=r'SP')
+axC1.plot(timeC,SOMaskedP[2300:2800]+4,'.-',ms=3,markevery=50,color=colorsProp[1],label=r'SO')
 axC1.vlines(x=np.argwhere(markerph[2300:2800]==1)/fs+2300/fs,ymin=-3,ymax=3,linewidth=0.8,color='gray')
 axC1.text(-0.2,1.05,'C',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axC1.transAxes)
 axC1.set_ylabel('z-score')
 axC1.set_ylim([-4,5])
 axC1.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
 axC1.tick_params(axis='y', which='both', labelsize=8)
-axC1.legend(fontsize=8,ncol=3,loc='upper left',bbox_to_anchor=(-0.01,1.42,0.1,0.1),columnspacing=3.25,handletextpad=0.9)
+axC1.legend(fontsize=8,ncol=3,loc='upper left',bbox_to_anchor=(-0.01,1.42,0.1,0.1),columnspacing=5.5,handletextpad=1.0)
 #Filtered Bands
-axC2.plot(timeC,filtered_sp[2300:2800],color=colorsProp[4],label='SP band')
-axC2.plot(timeC,filtered_d[2300:2800],color=colorsProp[5],label='SO band')
+axC2.plot(timeC,filtered_sp[2300:2800],color=colorsProp[2],label='SP band')
+axC2.plot(timeC,filtered_d[2300:2800],color=colorsProp[1],label='SO band')
 axC2.plot(timeC,filtered_85[2300:2800]*60,'k',label='0.85 Hz')
 axC2.vlines(x=np.argwhere(markerph[2300:2800]==1)/fs+2300/fs,ymin=-3,ymax=3,linewidth=0.8,color='gray')
 # axC2.text(-0.25,0.88,'C2',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axC2.transAxes)
 axC2.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
 axC2.tick_params(axis='y', which='both', labelsize=8)
 axC2.set_ylabel('z-score')
-axC2.legend(fontsize=8,ncol=3,loc='upper left',bbox_to_anchor=(-0.01,1.32,0.1,0.1),columnspacing=0.64,handletextpad=0.4)
+axC2.legend(fontsize=8,ncol=3,loc='upper left',bbox_to_anchor=(-0.01,1.32,0.1,0.1),columnspacing=2.25,handletextpad=1.0)
 axC2.set_yticks([-2,0,2])
 axC2.set_yticklabels(['-2','0','2'])
 #Phase
@@ -299,7 +322,7 @@ phase_offline=np.angle(signal.hilbert(filtered_85)*np.exp(-1j*np.pi/2))+np.pi
 axC3.plot(timeC,phase[2300:2800]*0.3,'k',label='Online phase')
 axC3.plot(timeC,phase_offline[2300:2800]*0.3,color=plt.cm.Greys(0.6),label='Offline phase')
 axC3.vlines(x=np.argwhere(markerph[2300:2800]==1)/fs+2300/fs,ymin=-0.1,ymax=0.6*np.pi,linewidth=0.8,color='gray')
-axC3.legend(fontsize=8,ncol=2,loc='upper left',bbox_to_anchor=(-0.01,1.42,0.1,0.1),columnspacing=3.11,handletextpad=0.6)
+axC3.legend(fontsize=8,ncol=2,loc='upper left',bbox_to_anchor=(-0.01,1.42,0.1,0.1),columnspacing=7.2,handletextpad=1.0)
 # axC3.text(-0.25,0.88,'C3',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axC3.transAxes)
 axC3.set_ylabel('radians')
 axC3.set_yticks([0,0.6*np.pi])
@@ -352,6 +375,19 @@ clb=fig1.colorbar(imB4,cax=axB5,ax=axB5,orientation='vertical',fraction=80,shrin
 clb.set_label('(a. u.)',fontsize=8,labelpad=-38)
 axB5.yaxis.set_ticks_position('left')
 axB5.tick_params(axis='both', which='both', labelsize=8)
+
+##
+#Zoom events
+
+# axD.plot(timeD,Phieph1[1400:1700],'b',label='$x(t)$')
+# axD.plot(timeD,spindlesMaskedP[1400:1700]+0.02,'.-',ms=3,markevery=50,color=colorsProp[4],label=r'SP')
+# axD.plot(timeD,SOMaskedP[1400:1700]-0.002,'.-',ms=3,markevery=50,color=colorsProp[5],label=r'SO')
+# axD.set_ylabel('x(t) $s^{-1}$',fontsize=8,labelpad=0.12)
+# axD.set_xlabel('Time (s)',fontsize=8,labelpad=0.2)
+# axD.tick_params(axis='both', which='both', labelsize=8)
+# axD.legend(fontsize=8,ncol=3,loc='upper left',bbox_to_anchor=(-0.01,1.43,0.1,0.1),columnspacing=4.0,handletextpad=1.0)
+# axD.text(-0.2,1.00,'D',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axD.transAxes)
+
 ##
 #Sum in time
 ScalogramB=np.load('../collectedData/ScalogramB.npz')['ScalogramB']
@@ -362,20 +398,20 @@ ScalogramCL=np.load('../collectedData/ScalogramCL.npz')['ScalogramCL']
 axE.loglog(freqsWavelet,ScalogramB/91000,'k',label='SHAM')
 axE.loglog(freqsWavelet,ScalogramR/91000,color=colorsa[1],linewidth=1.5,label='STIM-R')
 axE.loglog(freqsWavelet,ScalogramP/91000,color=colorsa[0],linewidth=1.5,label='STIM-P')
-axE.loglog(freqsWavelet,ScalogramCL/91000,color=colorsa[2],linewidth=1.5,label='STIM -CL')
+axE.loglog(freqsWavelet,ScalogramCL/91000,color=colorsa[2],linewidth=1.5,label='STIM-CL 45')
 
 axE.fill_between(freqsWavelet[166:214],ScalogramB[166:214]/91000,ScalogramCL[166:214]/91000,color='#666666')
 axE.fill_between(freqsWavelet[166:214],np.ones((48,))*1e-3,ScalogramB[166:214]/91000,color='#aaaaaa')
 axE.fill_between(freqsWavelet[33:65],np.ones((32,))*1e-3,ScalogramB[33:65]/91000,color='#aaaaaa')
 axE.fill_between(freqsWavelet[33:65],ScalogramB[33:65]/91000,ScalogramCL[33:65]/91000,color='#777777')
 
-axE.text(0.7,0.167,'SO',fontsize=9)
+axE.text(0.7,0.3,'SO',fontsize=9)
 axE.text(11,0.105,'SP',fontsize=9)
 axE.set_xlim([0.5,20.5])
 
 axE.set_xlabel('Frequency (Hz)',fontsize=8,labelpad=-0.1)
 axE.set_ylabel('a. u.',fontsize=8,labelpad=0)
-axE.set_ylim([1e-2,0.5])
+axE.set_ylim([1e-2,0.8])
 axE.text(-0.2,1.05,'D',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axE.transAxes)
 axE.tick_params(axis='both', which='both', labelsize=8)
 
@@ -424,6 +460,22 @@ Power=steadyFunctions.SpatialSpectrum(omega,Lx,Ly,alpha,beta,gamma,r,rho,nus,t0,
 correctedPower=np.zeros((np.shape(Power)[0]-1,))
 correctedPower=Power[1::]*omega[1::]/(2*np.pi)
 axE.loglog(omega[1::]/(2*np.pi),correctedPower*np.max(ScalogramB/91000)/np.max(correctedPower),'--r',label='Analytical')
-axE.legend(fontsize=8,loc='upper left',ncol=3,bbox_to_anchor=(-0.005,0.91,1,0.1),columnspacing=1.9,handletextpad=0.5)
+axE.legend(fontsize=8,loc='upper left',ncol=3,bbox_to_anchor=(-0.005,0.91,1,0.1),columnspacing=2.7,handletextpad=1.0)
 
-fig1.savefig('./output/Fig2.eps',dpi=300,bbox_inches='tight')
+
+axF.hist([np.hstack([durationsSPB,durationsSPP,durationsSPR]),np.hstack([durationsSOB,durationsSOP,durationsSOR])],bins=np.arange(0.05,2,0.1),color=[colorsProp[2],colorsProp[1]],density=False)
+axG.hist([np.hstack([p2pSPB,p2pSPP,p2pSPR]),np.hstack([p2pSOB,p2pSOP,p2pSOR])],bins=np.arange(0.0025,0.06,0.005),color=[colorsProp[2],colorsProp[1]],density=False)
+axF.legend(['SP','SO'],loc='upper left',fontsize=8,handletextpad=0.2)
+axG.legend(['SP','SO'],loc='upper left',fontsize=8,handletextpad=0.2)
+axF.set_xlabel('Duration (s)',fontsize=8)
+axF.set_ylabel('\# of events',fontsize=8)
+axG.set_xlabel('Peak-to-peak Amplitude ($s^{-1}$)',fontsize=8)
+axG.set_ylabel('\# of events',fontsize=8)
+axF.tick_params(axis='both', which='both', labelsize=8)
+axG.tick_params(axis='both', which='both', labelsize=8)
+axF.text(-0.19,1.05,'E',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axF.transAxes)
+axG.text(-0.19,1.05,'F',fontsize=10,fontweight=1000,verticalalignment='bottom',transform=axG.transAxes)
+
+
+
+fig1.savefig('./output/Fig2.eps',dpi=300,bbox_inches='tight',bbox_extra_artists=[axG,axB5])

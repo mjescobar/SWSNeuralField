@@ -20,7 +20,7 @@ def polar_statistics(angles,axis=0,nan_policy='omit'):
     stdpolar=np.arctan(np.std(sin_angles,axis=axis)/np.std(cos_angles,axis=axis))
     
     return meanpolar,stdpolar
-def circ_hist(a,ax,bins=10,bottom=1,mean_axis=0,density=False,cmap=plt.cm.Blues,plotmeanstd=True):
+def circ_hist(a,ax,bins=10,bottom=1,mean_axis=0,density=False,cmap=plt.cm.Blues,colorscale=10.0,plotmeanstd=True):
     #Circular histogram with mean value and standard deviation
     #a:angles data
     #ax: matplotlib.pyplot.axes with projection='polar'
@@ -47,7 +47,7 @@ def circ_hist(a,ax,bins=10,bottom=1,mean_axis=0,density=False,cmap=plt.cm.Blues,
     ##Change the color of the bars
     # Use custom colors and opacity
     for r, bar in zip(hist, bars):
-        bar.set_facecolor(cmap(r / 10.))
+        bar.set_facecolor(cmap(r / colorscale))
     return ax
 
 

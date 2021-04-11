@@ -48,6 +48,7 @@ classdef Stimulator
         previous_beta_power
         previous_eeg_power
         x_now
+        y_now
         origen_eeg
         shiftphase_eeg
         phase
@@ -58,9 +59,21 @@ classdef Stimulator
         timePauseStart
         pauseTime
         meanPhi
-        sample_envelope
         npulses
         interpulsetime
+        peak_value
+        envelope_accum
+        envelope_count
+        envelope_flag
+        peak_value_shift
+        envelope_accum_shift
+        envelope_count_shift
+        envelope_flag_shift
+        previous_envelope_shift
+        envelope_tol
+        envelope_tol_shift
+        envelope_wait
+        envelope_wait_shift
     end
     methods
         %Constructor
@@ -137,7 +150,17 @@ classdef Stimulator
 			obj.previous_shift_filter=zeros(delta_order-1,1);
 			obj.shiftphase_eeg=zeros(delta_order,1);
 			obj.previous_envelope=0;
-			obj.sample_envelope=0;
+			obj.envelope_count=0;
+			obj.envelope_accum=0;
+			obj.envelope_flag=0;
+			obj.envelope_tol=5e-4;
+            obj.envelope_wait=false;
+			obj.previous_envelope_shift=0;
+			obj.envelope_count_shift=0;
+			obj.envelope_accum_shift=0;
+			obj.envelope_flag_shift=0;
+			obj.envelope_tol_shift=5e-4;
+            obj.envelope_wait_shift=false;
 			obj.previous_theta_power_filter=zeros(delta_order-1,1);
 			obj.previous_theta_power=zeros(delta_order,1);
 			obj.previous_alpha_power_filter=zeros(delta_order-1,1);
@@ -147,7 +170,10 @@ classdef Stimulator
 			obj.previous_eeg_power_filter=zeros(delta_order-1,1);
 			obj.previous_eeg_power=zeros(delta_order,1);
 			obj.x_now=zeros(3,1);
-			obj.ENVELOPE_OFFSET=1e-2;
+			obj.y_now=zeros(3,1);
+			obj.ENVELOPE_OFFSET=4e-3;
+			obj.peak_value=obj.ENVELOPE_OFFSET;
+			obj.peak_value_shift=obj.ENVELOPE_OFFSET;
 			obj.COUNT_STIMULI=0;
 			obj.origen_eeg=zeros(3,1);
 			obj.shiftphase_eeg=zeros(delta_order,1);
@@ -284,20 +310,20 @@ classdef Stimulator
 							now_flags(1)=n;
 							now_flags(3)=1;
 							marker=1;
-							%random change of frequency
-							%Or zero change if obj.stimFrequencySD==0
-							fprintf('Stimulus at: %f \n',obj.stimTimeMarkers(now_flags(2)));
-							fprintf('Stim number %d \n',now_flags(2));
 							now_flags(2)=now_flags(2)+1;
 						end
 					end
 				elseif obj.stimMode==1	
 						%closed loop: Num stims mode
+                        if now_flags(2)<=obj.stimTimeMarkers
 							[obj,shape_now,marker,stimulationFlags]=phaseLock(obj,now_flags,n);
 							now_flags=stimulationFlags;
+                        else
+                            shape_now=0;
+                        end 
 				elseif obj.stimMode==2	
 						%Closed loop: Ngo Mode
-						if now_flags(2)<=length(obj.stimTimeMarkers)
+						if now_flags(2)<=obj.stimTimeMarkers
 							[obj,shape_now,marker,stimulationFlags]=phaseLockSO(obj,now_flags,n);
 							now_flags=stimulationFlags;
 						else
@@ -360,7 +386,7 @@ classdef Stimulator
             if isempty(marker)
 				marker=0;
 			end
-			now_flags(8)=marker;
+			now_flags(7)=marker;
             flags=now_flags;
         end
         
@@ -381,12 +407,11 @@ classdef Stimulator
             obj.previous_delta(2:end)=obj.previous_delta(1:end-1);
             obj.previous_delta(1)=V-obj.meanPhi;
             shape_now=0;
-            tol=1e-6; %2h
             nsamples=2000; %0.4 second para h=1e-4
             %filtering
             [filtro_delta,obj.previous_delta_filter]=util.filtrar(obj.numDelta,obj.denDelta,obj.previous_delta,obj.previous_delta_filter); %filtrar
             obj.x_now(2:3)=obj.x_now(1:2);
-            
+            obj.y_now(2:3)=obj.y_now(1:2);
             %Rectifiying
             if filtro_delta>=0
                 obj.x_now(1)=filtro_delta;
@@ -394,50 +419,94 @@ classdef Stimulator
                 obj.x_now(1)=-filtro_delta;
             end
             
-			%Filtro pasabajo 0.5Hz Buttherworth 4 orden
-			%[envolvente,obj.previous_envelope_filter]=util.filtrar(obj.numEnvelope,obj.denEnvelope,obj.x_now,obj.previous_envelope_filter);
-			
 			%New envelope detection method
-			if abs(obj.x_now(1)-obj.x_now(2))<=tol && obj.sample_envelope>nsamples
-				if (obj.x_now(1)>obj.x_now(3))
-					if obj.x_now(1)>obj.previous_envelope
-						obj.previous_envelope=obj.x_now(1);
-						obj.sample_envelope=0;
-					else
-					%slow decreasing
-						obj.previous_envelope=obj.previous_envelope*(1-1/nsamples);
-					end
-					
-				end
-			else
-				obj.sample_envelope=obj.sample_envelope+1;
-			end
-			envolvente=obj.previous_envelope;
-			
-			if envolvente<obj.ENVELOPE_OFFSET %Envolvente menor a 0.1uV
-				envolvente=obj.ENVELOPE_OFFSET; %Valor mínimo 0.1 uV
-			%else
-			%	envolvente=envolvente+obj.ENVELOPE_OFFSET;%sumar el margen pues la envolvente
-				%no necesariamente es el maximo
-			end
-			
-			%delta(i)=filtro_delta;
-			%Normalización
-			eeg_normalizado=filtro_delta/envolvente;
-			
-			if abs(eeg_normalizado)>1
-				if eeg_normalizado>=0
-					eeg_normalizado=1;
-				else
-					eeg_normalizado=-1;
-				end
-			end
-			
-			%Shifting phase -270 degrees (or forwarding 90 degrees)
-			obj.shiftphase_eeg(2:end)=obj.shiftphase_eeg(1:end-1);
-			obj.shiftphase_eeg(1)=eeg_normalizado;
-			[shiftphase,obj.previous_shift_filter]=util.filtrar(obj.numShift,obj.denShift,obj.shiftphase_eeg,obj.previous_shift_filter);
-			eeg_normalizado_90=shiftphase;
+            if obj.envelope_flag==0 && obj.envelope_count>0 && n>nsamples
+                %Calculate a new tolerance afte nsamples of simulated data
+                obj.envelope_tol=obj.envelope_accum/obj.envelope_count;
+                obj.envelope_flag=1;
+                fprintf('Tolerance envelope %.4e\n',obj.envelope_tol);
+            end
+            if obj.x_now(1)<obj.envelope_tol
+                %Set the search for peak value to 0.01 if the signal is below the tolerance
+                obj.peak_value=obj.ENVELOPE_OFFSET;
+            elseif abs(obj.x_now(1)-obj.x_now(2))<=obj.envelope_tol && obj.x_now(1)>=obj.x_now(2)
+                %when the signal arrives to a peak
+                if obj.x_now(3)<obj.peak_value && obj.x_now(1)>obj.peak_value 
+                    %If the point is higher than the previous value, search for the peak value 
+                    obj.envelope_wait=true;
+                    if n<nsamples
+                        %Add the derivative to calculate the average tolerance value for zero derivative
+                        obj.envelope_accum=obj.envelope_accum+abs(obj.x_now(1)-obj.x_now(2));
+                        obj.envelope_count=obj.envelope_count+1;
+                    end
+                else
+                    %If the point is not the peak, save the value to search for higher values than it
+                    obj.peak_value=obj.x_now(1);
+                end
+            elseif obj.envelope_wait==true && obj.x_now(1)<obj.x_now(2)
+                %If the value is lesser than the previous one, the peak was reached, then save that value as the envelope 
+                obj.previous_envelope=obj.x_now(2);
+                obj.envelope_wait=false;
+            end
+
+            envolvente=obj.previous_envelope;
+            if envolvente<obj.ENVELOPE_OFFSET %envelope lesser than 0.01
+                envolvente=obj.ENVELOPE_OFFSET; %envelope set to 0.01
+                %avoid the stimuli delivery until next oscillation
+                flag_hold=1;
+            end
+            %Save the actual envelope
+            obj.previous_envelope=envolvente;
+            %delta(i)=filtro_delta;
+            %Normalización
+            eeg_normalizado=filtro_delta/envolvente;
+            
+            
+            
+            %Shifting phase -270 degrees (or forwarding 90 degrees)
+            obj.shiftphase_eeg(2:end)=obj.shiftphase_eeg(1:end-1);
+            obj.shiftphase_eeg(1)=eeg_normalizado;
+            [shiftphase,obj.previous_shift_filter]=util.filtrar(obj.numShift,obj.denShift,obj.shiftphase_eeg,obj.previous_shift_filter);
+            
+            if shiftphase>=0
+                obj.y_now(1)=shiftphase;
+            else
+                obj.y_now(1)=-shiftphase;
+            end
+            
+
+            %New envelope detection method
+            if obj.envelope_flag_shift==0 && obj.envelope_count_shift>0 && n>nsamples
+                obj.envelope_tol_shift=obj.envelope_accum_shift/obj.envelope_count_shift;
+                obj.envelope_flag_shift=1;
+                fprintf('Tolerance envelope shift %.4e\n',obj.envelope_tol_shift);
+            end
+            if obj.y_now(1)<obj.envelope_tol_shift
+                obj.peak_value_shift=obj.ENVELOPE_OFFSET;
+            elseif abs(obj.y_now(1)-obj.y_now(2))<=obj.envelope_tol_shift && (obj.y_now(1)-obj.y_now(2))>=0
+                if obj.y_now(3)<obj.peak_value_shift && obj.y_now(1)>obj.peak_value_shift
+                    obj.envelope_wait_shift=true;   
+                    if n<nsamples
+                        obj.envelope_accum_shift=obj.envelope_accum_shift+abs(obj.y_now(1)-obj.y_now(2));
+                        obj.envelope_count_shift=obj.envelope_count_shift+1;
+                    end
+                else
+                    obj.peak_value_shift=obj.y_now(1);
+                end
+            elseif obj.envelope_wait_shift==true && obj.y_now(1)<obj.y_now(2)
+                obj.previous_envelope_shift=obj.y_now(2);
+                obj.envelope_wait_shift=false;
+                
+            end
+
+            envolvente_shift=obj.previous_envelope_shift;
+            if envolvente_shift<0.25%The envelope of the shifted phase signal at leat must be 0.1
+                envolvente_shift=0.25; %Set the envelope to 0.1
+            end
+            %Save the actual envelope
+            obj.previous_envelope_shift=envolvente_shift;
+
+            eeg_normalizado_90=shiftphase/envolvente_shift;
               
 			%Calculating the current phase with the arctang
 			%the shifted-phase signal is a sine
@@ -584,12 +653,11 @@ classdef Stimulator
             obj.previous_delta(2:end)=obj.previous_delta(1:end-1);
             obj.previous_delta(1)=V-obj.meanPhi;
             shape_now=0;
-            tol=1e-4; %2h
-            nsamples=800; %0.4 second para h=1e-4
+            nsamples=5000; %0.4 second para h=1e-4
             %filtering
             [filtro_delta,obj.previous_delta_filter]=util.filtrar(obj.numDelta,obj.denDelta,obj.previous_delta,obj.previous_delta_filter); %filtrar
             obj.x_now(2:3)=obj.x_now(1:2);
-            
+            obj.y_now(2:3)=obj.y_now(1:2);
             %Rectifiying
             if filtro_delta>=0
                 obj.x_now(1)=filtro_delta;
@@ -597,43 +665,95 @@ classdef Stimulator
                 obj.x_now(1)=-filtro_delta;
             end
 			%New envelope detection method
-			if abs(obj.x_now(1)-obj.x_now(2))<=tol && obj.sample_envelope>nsamples
-				if (obj.x_now(1)>obj.x_now(3))
-					if obj.x_now(1)>obj.previous_envelope
-						obj.previous_envelope=obj.x_now(1);
-						obj.sample_envelope=0;
-					else
-					%slow decreasing
-						obj.previous_envelope=obj.previous_envelope*(1-1/nsamples);
+			if obj.envelope_flag==0 && obj.envelope_count>0 && n>nsamples
+				%Calculate a new tolerance afte nsamples of simulated data
+				obj.envelope_tol=obj.envelope_accum/obj.envelope_count;
+				obj.envelope_flag=1;
+                fprintf('Tolerance envelope %.4e\n',obj.envelope_tol);
+			end
+			if obj.x_now(1)<obj.envelope_tol
+				%Set the search for peak value to 0.01 if the signal is below the tolerance
+				obj.peak_value=obj.ENVELOPE_OFFSET;
+			elseif abs(obj.x_now(1)-obj.x_now(2))<=obj.envelope_tol && obj.x_now(1)>=obj.x_now(2)
+				%when the signal arrives to a peak
+				if obj.x_now(3)<obj.peak_value && obj.x_now(1)>obj.peak_value 
+					%If the point is higher than the previous value, search for the peak value 
+					obj.envelope_wait=true;
+					if n<nsamples
+						%Add the derivative to calculate the average tolerance value for zero derivative
+						obj.envelope_accum=obj.envelope_accum+abs(obj.x_now(1)-obj.x_now(2));
+						obj.envelope_count=obj.envelope_count+1;
 					end
-					
+				else
+					%If the point is not the peak, save the value to search for higher values than it
+					obj.peak_value=obj.x_now(1);
 				end
-			else
-				obj.sample_envelope=obj.sample_envelope+1;
+            elseif obj.envelope_wait==true && obj.x_now(1)<obj.x_now(2)
+                %If the value is lesser than the previous one, the peak was reached, then save that value as the envelope 
+                obj.previous_envelope=obj.x_now(2);
+                obj.envelope_wait=false;
 			end
+
 			envolvente=obj.previous_envelope;
-			
-			if envolvente<obj.ENVELOPE_OFFSET %Envolvente menor a 0.1uV
-				envolvente=obj.ENVELOPE_OFFSET; %Valor mínimo 0.1 uV
+			if envolvente<obj.ENVELOPE_OFFSET %envelope lesser than 0.01
+				envolvente=obj.ENVELOPE_OFFSET; %envelope set to 0.01
+				%avoid the stimuli delivery until next oscillation			
 			end
-			
+            if envolvente<2*obj.ENVELOPE_OFFSET
+                flag_hold=1;
+            end
+			%Save the actual envelope
+			obj.previous_envelope=envolvente;
 			%delta(i)=filtro_delta;
 			%Normalización
 			eeg_normalizado=filtro_delta/envolvente;
 			
-			if abs(eeg_normalizado)>1
-				if eeg_normalizado>=0
-					eeg_normalizado=1;
-				else
-					eeg_normalizado=-1;
-				end
-			end
+			
 			
 			%Shifting phase -270 degrees (or forwarding 90 degrees)
 			obj.shiftphase_eeg(2:end)=obj.shiftphase_eeg(1:end-1);
 			obj.shiftphase_eeg(1)=eeg_normalizado;
 			[shiftphase,obj.previous_shift_filter]=util.filtrar(obj.numShift,obj.denShift,obj.shiftphase_eeg,obj.previous_shift_filter);
-			eeg_normalizado_90=shiftphase;
+			
+			if shiftphase>=0
+				obj.y_now(1)=shiftphase;
+			else
+				obj.y_now(1)=-shiftphase;
+			end
+			
+
+			%New envelope detection method
+			if obj.envelope_flag_shift==0 && obj.envelope_count_shift>0 && n>nsamples
+				obj.envelope_tol_shift=obj.envelope_accum_shift/obj.envelope_count_shift;
+				obj.envelope_flag_shift=1;
+                fprintf('Tolerance envelope shift %.4e\n',obj.envelope_tol_shift);
+			end
+			if obj.y_now(1)<obj.envelope_tol_shift
+				obj.peak_value_shift=obj.ENVELOPE_OFFSET;
+			elseif abs(obj.y_now(1)-obj.y_now(2))<=obj.envelope_tol_shift && (obj.y_now(1)-obj.y_now(2))>=0
+				if obj.y_now(3)<obj.peak_value_shift && obj.y_now(1)>obj.peak_value_shift
+				    obj.envelope_wait_shift=true;	
+					if n<nsamples
+						obj.envelope_accum_shift=obj.envelope_accum_shift+abs(obj.y_now(1)-obj.y_now(2));
+						obj.envelope_count_shift=obj.envelope_count_shift+1;
+					end
+				else
+					obj.peak_value_shift=obj.y_now(1);
+				end
+            elseif obj.envelope_wait_shift==true && obj.y_now(1)<obj.y_now(2)
+                obj.previous_envelope_shift=obj.y_now(2);
+                obj.envelope_wait_shift=false;
+                
+			end
+
+			envolvente_shift=obj.previous_envelope_shift;
+			if envolvente_shift<0.1%The envelope of the shifted phase signal at leat must be 0.1
+				envolvente_shift=0.1; %Set the envelope to 0.1
+			end
+			%Save the actual envelope
+			obj.previous_envelope_shift=envolvente_shift;
+
+			eeg_normalizado_90=shiftphase/envolvente_shift;
               
 			%Calculating the current phase with the arctang
 			%the shifted-phase signal is a sine
@@ -670,32 +790,28 @@ classdef Stimulator
 			end
 			
 			if (flag_search==1 && obj.phase>=obj.targetPhase-EPSILON_ANGLE && obj.phase<=obj.targetPhase+EPSILON_ANGLE)		        
-				if flag_shot==0
-				fprintf('flag_shot set \n');
-					flag_shot=1;     %Perform a pulse of the stimulus
-					
-					flag_search=0;  %Deactivate for not search the angle again until the first pulse is delivered
-				end
+				if flag_hold==0 && flag_shot==0
+                    flag_shot=1;
+                    flag_hold=1;  
+                    
+                    flags(1)=n;
+                    flags(3)=1;
+                            
+                    %Rectangular pulse
+                    %phi_matrix(input_indexes,duration_stimulus)=phi_matrix(input_indexes,duration_stimulus)+obj.stimAmplitude;
+                    marker=1;
+                    %Add the stim counter
+                    flags(2)=flags(2)+1;
+                    flag_search=0;  %Deactivate for not search the angle again until the first pulse is delivered
+                end
 			end
-			if flag_shot==1 && flag_hold==0
-				flag_shot=0;
-				flag_hold=1;  
-				%Stimulation
-				fprintf('Stimulus at: %d \n', n);
-				fprintf('Stim number %d: phase: %.6f \n',flags(2), obj.phase);
-				flags(1)=n;
-				flags(3)=1;
-						
-				%Rectangular pulse
-				%phi_matrix(input_indexes,duration_stimulus)=phi_matrix(input_indexes,duration_stimulus)+obj.stimAmplitude;
-				marker=1;
-				%Add the stim counter
-				flags(2)=flags(2)+1;
-			end
+
+			
             %Control for search in the next low-frequency oscillation
             if (flag_hold==1 && obj.phase>1.9*pi)
-                fprintf('Here %.6f\n',obj.phase)
+                %fprintf('Reset at time: %.2f\n',n*1e-4);
                 flag_hold=0;
+                flag_shot=0;
             end
             if isempty(marker)
 				marker=0;

@@ -142,7 +142,10 @@ classdef Simulator
             %Mean spatial value of Phi_e, required for closed-loop
             obj.stimulator=obj.stimulator.setMeanPhi(mean(phi(obj.indexesE,1)));
 			%All time
-			
+			holdMarker=0;
+            %Plasticiy update(refresh) times
+            update_counter=0;
+            plasticityUpdateLeap=500; %50ms if h=1e-4
 			for n=1:ceil(obj.finalTime*1/obj.h)
 				%% Simulation
 				%Set indexes for current step
@@ -160,6 +163,9 @@ classdef Simulator
                 %Calculate the spatial mean of phi_e
                 stimFlags(9)=mean(phi(obj.indexesE,current));
                 
+                if marker>0
+                    holdMarker=marker;
+                end
 				%Save data
 				if samplingFlag==1
 					%saveTime=tic();
@@ -168,25 +174,39 @@ classdef Simulator
 					Phistorage(:,nstore)=phi(:,current);
 					Phasestorage(:,nstore)=[obj.stimulator.x_now(1),obj.stimulator.previous_envelope,obj.stimulator.phase];
 					stimstorage(:,nstore)=stim;
-					markerstorage(nstore)=marker;
+					markerstorage(nstore)=holdMarker;
 					currentTimestorage(nstore)=currentTime;
-					%toc(saveTime);
+					
+                    if holdMarker>0 %The stored phase of stimulation is different of the actual phase! 
+                        %This shows the correspondent phase at the time of storage
+                        %With fs=0.01 seconds @ 0.85 Hz, a variation of 3 degrees is expected, plus the 9 degrees, a deviation of 12 degrees=0.2 rads
+                        %Stimulation
+                        fprintf('Stimulus of type %d at: %.2f \n',holdMarker, n*1e-4);
+                        fprintf('Stim number %d: phase: %.6f \n',stimFlags(2)-1, obj.stimulator.phase);
+                    end
+                    holdMarker=0;
+                    %toc(saveTime);
 					if storeFlag==1
 						obj.monitor.savebatch(Vstorage,Qstorage,Phistorage,stimstorage,markerstorage,currentTimestorage);
 						obj.monitor.savePhasebatch(Phasestorage);
 						
 						if obj.plasticityFlag==2
-							[obj.strengthsRatios,meanPhi]=obj.plasticity.update(Phistorage);
-							obj.monitor.saveStrengths(obj.model.connectionVector,meanPhi,obj.strengthRatios)
+                            [obj.strengthsRatios,meanPhi]=obj.plasticity.update(Phistorage);
+                            obj.monitor.saveStrengths(obj.model.connectionVector,meanPhi,obj.strengthsRatios)
 						end
 					end
 				end
 				
 				%Plasticity
-				if obj.plasticityFlag==2
-						obj.model=obj.model.updateConnections(1,obj.storageLeap,obj.strengthsRatios);
-				end
+                if obj.plasticityFlag==2
+                        update_counter=update_counter+1;
+                        if update_counter>=plasticityUpdateLeap
+                            obj.model=obj.model.updateConnections(plasticityUpdateLeap,obj.storageLeap,obj.strengthsRatios);
+                            update_counter=0;
+                        end
+                end
 				
+                
                  %%Messages
                  if mod(currentTime,5)==0
                     fprintf('Transcurred: %.2f seconds of %s \n',currentTime,obj.monitor.filename);
